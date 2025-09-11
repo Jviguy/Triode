@@ -32,6 +32,10 @@ namespace triode::arch {
         return res;
     }
 
+    std::pair<Tryte, Trit> full_add() {
+
+    }
+
     Word::Word(const int64_t n) {
         if (n == 0) {
             //default construction handles this already.

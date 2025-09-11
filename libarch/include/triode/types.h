@@ -116,22 +116,11 @@ namespace triode::arch {
             return result;
         }
 
-        [[nodiscard]] Tryte abs() const {
-            // Scan from most significant to least significant (assuming big-endian)
-            for (size_t i = 0; i < TRITS_IN_TRYTE; ++i) {
-                if (trits[i] == Trit::POSITIVE) {
-                    return *this; // It's a positive number
-                }
-                if (trits[i] == Trit::NEGATIVE) {
-                    return this->negate(); // It's a negative number
-                }
-            }
-            return *this; // It's zero
-        }
+        [[nodiscard]] std::pair<Tryte, Trit> full_add() const;
 
         auto operator<=>(const Tryte& rhs) const = default;
 
-        auto operator+=(Tryte& rhs) -> Tryte& {
+        auto operator+=(const Tryte& rhs) -> Tryte& {
             auto carry = Trit::ZERO;
             for (size_t i = 0; i < TRITS_IN_TRYTE; ++i) {
                 int sum = static_cast<int>(this->trits[i]) +
@@ -151,26 +140,15 @@ namespace triode::arch {
             return *this;
         }
 
-        auto operator-=(Tryte& rhs) -> Tryte& {
-            auto carry = Trit::ZERO;
-            rhs = rhs.negate();
-            for (size_t i = 0; i < TRITS_IN_TRYTE; ++i) {
-                int sum = static_cast<int>(this->trits[i]) +
-                          static_cast<int>(rhs.trits[i]) +
-                          static_cast<int>(carry);
-                carry = Trit::ZERO;
-                if (sum > 1) {
-                    sum -= 3;
-                    carry = Trit::POSITIVE;
-                } else if (sum < -1) {
-                    sum += 3;
-                    carry = Trit::NEGATIVE;
-                }
-                this->trits[i] = static_cast<Trit>(sum);
-            }
+        auto operator-=(const Tryte& rhs) -> Tryte& {
+            *this += rhs.negate();
             return *this;
         }
     };
+
+    [[nodiscard]] std::pair<Tryte, Trit> Tryte::full_add() const {
+
+    }
 
     inline auto operator+(const Tryte& lhs, const Tryte& rhs) {
         Tryte result;
@@ -196,33 +174,6 @@ namespace triode::arch {
         return tryte.negate();
     }
 
-    inline auto operator-(const Tryte& lhs, const Tryte& rhs) {
-        return lhs + -rhs;
-    }
-
-    inline Tryte shift_left(const Tryte& t) {
-        Tryte result{};
-        // Shift trits "left" (towards higher significance/index)
-        for (int i = TRITS_IN_TRYTE - 2; i >= 0; --i) {
-            result.trits[i + 1] = t.trits[i];
-        }
-        return result;
-    }
-
-    inline auto operator*(const Tryte& lhs, const Tryte& rhs) {
-        Tryte total{};
-        Tryte shifted = lhs;
-        for (size_t i = 0; i < TRITS_IN_TRYTE; ++i) {
-            if (rhs.trits[i] == Trit::POSITIVE) {
-                total += shifted;
-            } else if (rhs.trits[i] == Trit::NEGATIVE) {
-                total -= shifted;
-            }
-            shifted = shift_left(shifted);
-        }
-
-        return total;
-    }
 
     inline std::ostream& operator<<(std::ostream& os, const Tryte& tryte) {
         os << "{ ";
@@ -238,6 +189,8 @@ namespace triode::arch {
     constexpr int64_t WORD_MAX = (pow3(TRITS_IN_WORD) - 1) / 2;
     constexpr int64_t WORD_MIN = -WORD_MAX;
 
+    class DoubleWord;
+
     class Word {
     public:
         std::array<Tryte, TRYTES_IN_WORD> trytes{};
@@ -248,6 +201,22 @@ namespace triode::arch {
 
         [[nodiscard]] int64_t to_int() const;
 
+        [[nodiscard]] Word add(const Word& other) const {
+            Word res;
+            auto carry = Tryte(0);
+            for (size_t i = 0; i < TRYTES_IN_WORD; ++i) {
+                auto sum = this->trytes[i] + other.trytes[i] + carry;
+                carry = Tryte(0);
+                if (sum.to_int() > TRYTE_MAX) {
+                }
+            }
+            return res;
+        }
+    };
+
+    class DoubleWord : public Word {
+    public:
+        std::array<Tryte, TRYTES_IN_WORD * 2> trytes{};
     };
 }
 

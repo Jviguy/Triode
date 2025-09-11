@@ -13,6 +13,11 @@ TEST_CASE("Tryte constructor (LST) handles zero correctly", "[tryte][constructor
     REQUIRE(tryte == Tryte{0, 0, 0, 0, 0, 0});
 }
 
+TEST_CASE("Tryte constructor (LST) handles one correctly", "[tryte][constructor]") {
+    auto tryte = Tryte(1);
+    REQUIRE(tryte == Tryte{1, 0, 0, 0, 0, 0});
+}
+
 TEST_CASE("Tryte constructor (LST) handles a simple positive value", "[tryte][constructor]") {
     auto tryte = Tryte(25);
     // Trits, from least to most significant: {1, -1, 0, 1, 0, 0}
