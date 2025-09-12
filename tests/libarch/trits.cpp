@@ -2,7 +2,7 @@
 // Created by jvigu on 9/7/2025.
 //
 #include <catch2/catch_all.hpp>
-#include <triode/types.h>
+#include <triode/tryte.h>
 using namespace triode::arch;
 
 

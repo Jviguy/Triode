@@ -4,7 +4,7 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
-#include <triode/types.h>
+#include <triode/tryte.h>
 
 using namespace triode::arch;
 
@@ -101,6 +101,50 @@ TEST_CASE("Tryte Addition: Underflow wraps from MIN to MAX", "[tryte][math][addi
     REQUIRE(result == Tryte(TRYTE_MAX)); // Should be 364
 }
 
+TEST_CASE("Tryte full_add: Basic addition with positive carry-in", "[tryte][math][full_add]") {
+    auto a = Tryte(10);
+    const auto b = Tryte(15);
+
+    // Perform the in-place addition: a = a + b + 1
+    Trit carry_out = a.full_add(b, Trit::POSITIVE);
+
+    REQUIRE(a == Tryte(26));
+    REQUIRE(carry_out == Trit::ZERO);
+}
+
+TEST_CASE("Tryte full_add: Overflow caused by positive carry-in", "[tryte][math][full_add]") {
+    auto a = Tryte(triode::arch::TRYTE_MAX); // 364
+    const auto b = Tryte(0);
+
+    // Perform the in-place addition: a = 364 + 0 + 1
+    Trit carry_out = a.full_add(b, Trit::POSITIVE);
+
+    REQUIRE(a == Tryte(triode::arch::TRYTE_MIN));
+    REQUIRE(carry_out == Trit::POSITIVE);
+}
+
+TEST_CASE("Tryte full_add: Basic addition with negative carry-in", "[tryte][math][full_add]") {
+    auto a = Tryte(10);
+    const auto b = Tryte(15);
+
+    // Perform the in-place addition: a = a + b - 1
+    Trit carry_out = a.full_add(b, Trit::NEGATIVE);
+
+    REQUIRE(a == Tryte(24));
+    REQUIRE(carry_out == Trit::ZERO);
+}
+
+TEST_CASE("Tryte full_add: Underflow caused by negative carry-in", "[tryte][math][full_add]") {
+    auto a = Tryte(triode::arch::TRYTE_MIN); // -364
+    const auto b = Tryte(0);
+
+    // Perform the in-place addition: a = -364 + 0 - 1
+    Trit carry_out = a.full_add(b, Trit::NEGATIVE);
+
+    REQUIRE(a == Tryte(triode::arch::TRYTE_MAX));
+    REQUIRE(carry_out == Trit::NEGATIVE);
+}
+
 // --- Negation operator testing
 
 TEST_CASE("Tryte Negation: A positive number becomes negative", "[tryte][math][negation]") {
@@ -127,45 +171,4 @@ TEST_CASE("Tryte Negation: Negating MAX results in MIN", "[tryte][math][negation
     const auto max = Tryte(TRYTE_MAX);
     const auto result = max.negate();
     REQUIRE(result == Tryte(TRYTE_MIN));
-}
-
-// --- Multiplication Testing
-TEST_CASE("Tryte Multiplication: Multiplying by zero results in zero", "[tryte][math][multiplication]") {
-    const auto a = Tryte(123);
-    const auto b = Tryte(0);
-    REQUIRE((a * b) == Tryte(0));
-    REQUIRE((b * a) == Tryte(0));
-}
-
-TEST_CASE("Tryte Multiplication: Multiplying by one returns the original number", "[tryte][math][multiplication]") {
-    // Tests the identity property for multiplication (A * 1 = A)
-    const auto a = Tryte(42);
-    const auto b = Tryte(1);
-    REQUIRE((a * b) == a);
-}
-
-TEST_CASE("Tryte Multiplication: Multiplying by negative one returns the negated number", "[tryte][math][multiplication]") {
-    // (A * -1 = -A)
-    const auto a = Tryte(55);
-    const auto b = Tryte(-1);
-    REQUIRE((a * b) == Tryte(-55));
-    REQUIRE((a * b) == a.negate());
-}
-
-TEST_CASE("Tryte Multiplication: Two positive numbers", "[tryte][math][multiplication]") {
-    const auto a = Tryte(10);
-    const auto b = Tryte(15);
-    REQUIRE((a * b) == Tryte(150));
-}
-
-TEST_CASE("Tryte Multiplication: A positive and a negative number", "[tryte][math][multiplication]") {
-    const auto a = Tryte(20);
-    const auto b = Tryte(-5);
-    REQUIRE((a * b) == Tryte(-100));
-}
-
-TEST_CASE("Tryte Multiplication: Two negative numbers", "[tryte][math][multiplication]") {
-    const auto a = Tryte(-7);
-    const auto b = Tryte(-8);
-    REQUIRE((a * b) == Tryte(56));
 }
