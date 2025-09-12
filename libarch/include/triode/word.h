@@ -31,7 +31,9 @@ namespace triode::arch {
 
         [[nodiscard]] int64_t to_int() const;
 
-        [[nodiscard]] Trit full_add(const Word& other, Trit carry_in = Trit::ZERO);
+        Trit full_add(const Word& other, Trit carry_in = Trit::ZERO);
+
+        [[nodiscard]] Word negate() const;
     };
 
     class DoubleWord : public Word {

@@ -42,4 +42,12 @@ namespace triode::arch {
         return carry;
     }
 
+    Word Word::negate() const {
+        Word res;
+        for (size_t i = 0; i < TRYTES_IN_WORD; i++) {
+            res.trytes_[i] = trytes_[i].negate();
+        }
+        return res;
+    }
+
 }
