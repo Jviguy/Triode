@@ -4,7 +4,7 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
-#include <triode/tryte.h>
+#include <triode/arch/tryte.h>
 
 using namespace triode::arch;
 
@@ -113,13 +113,13 @@ TEST_CASE("Tryte full_add: Basic addition with positive carry-in", "[tryte][math
 }
 
 TEST_CASE("Tryte full_add: Overflow caused by positive carry-in", "[tryte][math][full_add]") {
-    auto a = Tryte(triode::arch::TRYTE_MAX); // 364
+    auto a = Tryte(TRYTE_MAX); // 364
     const auto b = Tryte(0);
 
     // Perform the in-place addition: a = 364 + 0 + 1
     Trit carry_out = a.full_add(b, Trit::POSITIVE);
 
-    REQUIRE(a == Tryte(triode::arch::TRYTE_MIN));
+    REQUIRE(a == Tryte(TRYTE_MIN));
     REQUIRE(carry_out == Trit::POSITIVE);
 }
 
@@ -135,13 +135,13 @@ TEST_CASE("Tryte full_add: Basic addition with negative carry-in", "[tryte][math
 }
 
 TEST_CASE("Tryte full_add: Underflow caused by negative carry-in", "[tryte][math][full_add]") {
-    auto a = Tryte(triode::arch::TRYTE_MIN); // -364
+    auto a = Tryte(TRYTE_MIN); // -364
     const auto b = Tryte(0);
 
     // Perform the in-place addition: a = -364 + 0 - 1
     Trit carry_out = a.full_add(b, Trit::NEGATIVE);
 
-    REQUIRE(a == Tryte(triode::arch::TRYTE_MAX));
+    REQUIRE(a == Tryte(TRYTE_MAX));
     REQUIRE(carry_out == Trit::NEGATIVE);
 }
 

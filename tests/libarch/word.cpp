@@ -2,7 +2,7 @@
 // Created by jvigu on 9/7/2025.
 //
 #include <catch2/catch_all.hpp>
-#include <triode/word.h>
+#include <triode/arch/word.h>
 
 using namespace triode::arch;
 
@@ -123,4 +123,95 @@ TEST_CASE("Word full_add: Underflow caused by negative carry-in", "[word][math][
 
     REQUIRE(a.to_int() == WORD_MAX);
     REQUIRE(carry_out == Trit::NEGATIVE);
+}
+
+TEST_CASE("Word Accessors: Getters", "[word][accessors]") {
+    // We'll construct a known instruction word manually using the setters,
+    // then verify the getters extract the correct information.
+    // Let's create an R-Type instruction: ADD R5, R10, R12
+    Word instruction;
+    instruction.set_opcode(OpCode::ADD)
+               .set_rd(5)
+               .set_rs1(10)
+               .set_rs2(12);
+
+    SECTION("Getters for R-Type instruction") {
+        REQUIRE(instruction.opcode() == OpCode::ADD);
+        REQUIRE(instruction.rd() == 5);
+        REQUIRE(instruction.rs1() == 10);
+        REQUIRE(instruction.rs2() == 12);
+    }
+
+    // Let's create an I-Type instruction: ADDI R3, R4, -150
+    Word i_instruction;
+    i_instruction.set_opcode(OpCode::ADDI)
+                 .set_rd(3)
+                 .set_rs1(4)
+                 .set_immediate12(-150);
+
+    SECTION("Getters for I-Type instruction") {
+        REQUIRE(i_instruction.opcode() == OpCode::ADDI);
+        REQUIRE(i_instruction.rd() == 3);
+        REQUIRE(i_instruction.rs1() == 4);
+        REQUIRE(i_instruction.immediate12() == -150);
+    }
+
+    // Let's create a J-Type instruction: JMP 25000
+    Word j_instruction;
+    j_instruction.set_opcode(OpCode::JMP)
+                 .set_immediate18(25000);
+
+    SECTION("Getters for J-Type instruction") {
+        REQUIRE(j_instruction.opcode() == OpCode::JMP);
+        REQUIRE(j_instruction.immediate18() == 25000);
+    }
+}
+
+TEST_CASE("Word Accessors: Setters", "[word][accessors]") {
+    Word instruction;
+
+    SECTION("set_opcode") {
+        instruction.set_opcode(OpCode::HALT);
+        REQUIRE(instruction.opcode() == OpCode::HALT);
+    }
+
+    SECTION("set_rd") {
+        instruction.set_rd(26); // Max register index
+        REQUIRE(instruction.rd() == 26);
+    }
+
+    SECTION("set_rs1") {
+        instruction.set_rs1(13);
+        REQUIRE(instruction.rs1() == 13);
+    }
+
+    SECTION("set_rs2") {
+        instruction.set_rs2(0);
+        REQUIRE(instruction.rs2() == 0);
+    }
+
+    SECTION("set_immediate12") {
+        instruction.set_immediate12(265720); // Max 12-trit value
+        REQUIRE(instruction.immediate12() == 265720);
+        instruction.set_immediate12(-265720); // Min 12-trit value
+        REQUIRE(instruction.immediate12() == -265720);
+    }
+
+    SECTION("set_immediate18") {
+        instruction.set_immediate18(193710244); // Max 18-trit value
+        REQUIRE(instruction.immediate18() == 193710244);
+        instruction.set_immediate18(-193710244); // Min 18-trit value
+        REQUIRE(instruction.immediate18() == -193710244);
+    }
+
+    SECTION("Setters are chainable") {
+        instruction.set_opcode(OpCode::SUB)
+                   .set_rd(1)
+                   .set_rs1(2)
+                   .set_rs2(3);
+        REQUIRE(instruction.opcode() == OpCode::SUB);
+        REQUIRE(instruction.rd() == 1);
+        REQUIRE(instruction.rs1() == 2);
+        REQUIRE(instruction.rs2() == 3);
+    }
 }

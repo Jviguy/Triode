@@ -1,7 +1,7 @@
 //
 // Created by jvigu on 9/7/2025.
 //
-#include <triode/tryte.h>
+#include <triode/arch/tryte.h>
 
 namespace triode::arch {
 
@@ -61,8 +61,25 @@ namespace triode::arch {
             }
             this->trits_[i] = static_cast<Trit>(sum);
         }
-        // we could check carry here for overflow saving, but I feel allowing overflow feels more like normal computing.
         return carry;
+    }
+
+    auto Tryte::operator<=>(const Tryte &rhs) const -> std::strong_ordering {
+        for (int i = TRITS_IN_TRYTE - 1; i >= 0; --i) {
+            if (const auto result = arch::operator<=>(trits_[i], rhs.trits_[i]);
+                result != std::strong_ordering::equal) {
+                return result;
+            }
+        }
+        return std::strong_ordering::equal;
+    }
+
+    auto Tryte::operator==(const Tryte &rhs) const -> bool {
+        return *this <=> rhs == std::strong_ordering::equal;
+    }
+
+    auto Tryte::operator!=(const Tryte &rhs) const -> bool {
+        return *this <=> rhs != std::strong_ordering::equal;
     }
 
     auto Tryte::operator+=(const Tryte& rhs) -> Tryte& {
@@ -83,7 +100,7 @@ namespace triode::arch {
         return result;
     }
 
-    std::ostream& operator<<(std::ostream& os, const Tryte& tryte) {
+    std::ostream& operator<<(std::ostream& os, Tryte tryte) {
         os << "{ ";
         for (size_t i = 0; i < TRITS_IN_TRYTE; ++i) {
             os << static_cast<int>(tryte.trits_[i]) << (i < tryte.trits_.size() - 1 ? ", " : "");
