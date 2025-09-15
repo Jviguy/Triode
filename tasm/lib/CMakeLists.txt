@@ -1,10 +1,8 @@
-add_executable(asm main.cpp
+add_library(asm STATIC
         assembler.cpp
-        assembler.h
         lexer.cpp
-        lexer.h
         parser.cpp
-        parser.h
         token.cpp
-        token.h)
+)
+target_include_directories(asm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(asm PRIVATE arch)

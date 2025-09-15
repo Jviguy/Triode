@@ -2,4 +2,4 @@
 // Created by jvigu on 9/14/2025.
 //
 
-#include "token.h"
+#include <triode/tasm/token.h>
