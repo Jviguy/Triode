@@ -2,13 +2,13 @@
 <module type="EMPTY_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/ternary/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/triode-arch/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/triode-asm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/triode-cli/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/ternary/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/triode-arch/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/triode-asm/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/triode-cli/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/ternary/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
-      <excludeFolder url="file://$MODULE_DIR$/ternary/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
