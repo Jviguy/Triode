@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["ternary", "triode-arch", "triode-asm", "triode-cli"]
