@@ -1,4 +1,4 @@
-use crate::balanced_int::{TernaryIntegerRepr, BalancedInt, ArithmeticTernaryInteger};
+use ternary::balanced_int::{TernaryIntegerRepr, BalancedInt, ArithmeticTernaryInteger};
 
 pub const TRYTES_IN_WORD: usize = 4;
 const TRITS_IN_WORD: usize = crate::tryte::TRITS_IN_TRYTE * TRYTES_IN_WORD;
@@ -13,8 +13,7 @@ impl ArithmeticTernaryInteger for Word {}
 
 #[cfg(test)]
 mod tests {
-    use crate::{Trit, Word};
-    use crate::word::TRITS_IN_WORD;
+    use triode_arch::word::TRITS_IN_WORD;
 
     #[test]
     fn test_word_zero() {

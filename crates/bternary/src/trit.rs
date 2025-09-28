@@ -1,6 +1,7 @@
+use std::fmt::Display;
 use std::ops::{Mul, Neg};
 
-/// Balanced Trit, a ternary digit with values -1, 0, and 1.
+/// Balanced Trit, a bternary digit with values -1, 0, and 1.
 /// We use `i8` as the underlying type to represent the three states.
 /// This is useful for speed wise but wastes a good bit of memory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +76,16 @@ impl TryFrom<i8> for Trit {
              0 => Ok(Trit::Zero),
              1 => Ok(Trit::Pos),
              _ => Err(InvalidTritValueError(value))
+        }
+    }
+}
+
+impl Display for Trit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Trit::Neg => write!(f, "T"),
+            Trit::Zero => write!(f, "0"),
+            Trit::Pos => write!(f, "1"),
         }
     }
 }

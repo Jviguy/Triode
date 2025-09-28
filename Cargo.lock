@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "ternary"
+name = "bternary"
 version = "0.1.0"
 
 [[package]]
