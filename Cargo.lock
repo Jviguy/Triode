@@ -9,6 +9,9 @@ version = "0.1.0"
 [[package]]
 name = "triode-arch"
 version = "0.1.0"
+dependencies = [
+ "bternary",
+]
 
 [[package]]
 name = "triode-asm"

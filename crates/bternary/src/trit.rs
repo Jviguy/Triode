@@ -4,7 +4,7 @@ use std::ops::{Mul, Neg};
 /// Balanced Trit, a bternary digit with values -1, 0, and 1.
 /// We use `i8` as the underlying type to represent the three states.
 /// This is useful for speed wise but wastes a good bit of memory.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 #[repr(i8)]
 pub enum Trit {
     Neg = -1,

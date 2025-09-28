@@ -1,9 +1,9 @@
-use ternary::balanced_int::{TernaryIntegerRepr, BalancedInt, ArithmeticTernaryInteger};
+use bternary::balanced_int::{TernaryIntegerRepr, BalancedInt, ArithmeticTernaryInteger};
 
 pub const TRYTES_IN_WORD: usize = 4;
 const TRITS_IN_WORD: usize = crate::tryte::TRITS_IN_TRYTE * TRYTES_IN_WORD;
 
-pub type Word = BalancedInt<TRITS_IN_WORD>;
+pub struct Word(pub BalancedInt<TRITS_IN_WORD>);
 
 impl TernaryIntegerRepr for Word {
     type Int = i64;
@@ -13,7 +13,8 @@ impl ArithmeticTernaryInteger for Word {}
 
 #[cfg(test)]
 mod tests {
-    use triode_arch::word::TRITS_IN_WORD;
+    use super::*;
+    use bternary::Trit;
 
     #[test]
     fn test_word_zero() {

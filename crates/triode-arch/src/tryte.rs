@@ -1,4 +1,4 @@
-use ternary::balanced_int::{TernaryIntegerRepr, BalancedInt};
+use bternary::balanced_int::{TernaryIntegerRepr, BalancedInt};
 
 pub const TRITS_IN_TRYTE: usize = 6;
 

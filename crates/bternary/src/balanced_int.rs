@@ -1,3 +1,4 @@
+use std::cmp::{Ordering, PartialOrd};
 use crate::trit::Trit;
 
 pub trait Int:
@@ -77,6 +78,7 @@ impl<const N: usize> BalancedInt<N> {
         }
         Trit::Zero
     }
+
 }
 
 impl<const N: usize> Default for BalancedInt<N> {
@@ -117,6 +119,26 @@ impl<const N: usize> std::ops::Index<usize> for BalancedInt<N> {
 impl<const N: usize> std::ops::IndexMut<usize> for BalancedInt<N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
+    }
+}
+
+impl<const N: usize> PartialOrd<Self> for BalancedInt<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const N: usize> Ord for BalancedInt<N> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // just look for most sig trit and deal with signs
+        for i in (0..N).rev() {
+            if self[i] > other[i] {
+                return Ordering::Greater;
+            } else if self[i] < other[i] {
+                return Ordering::Less;
+            }
+        }
+        Ordering::Equal
     }
 }
 
@@ -204,6 +226,16 @@ impl<const N: usize> BalancedInt<N> where Self: ArithmeticTernaryInteger {
         BalancedInt(result)
     }
 
+
+    pub fn abs(&self) -> Self {
+        if self.sign() == Trit::Neg {
+            self.negate()
+        } else {
+            // copy that jawn its N bytes lol.
+            *self
+        }
+    }
+
     /// Division with remainder.
     /// Returns (quotient, remainder)
     /// Panics if rhs is zero.
@@ -215,38 +247,42 @@ impl<const N: usize> BalancedInt<N> where Self: ArithmeticTernaryInteger {
             panic!("Division by zero");
         }
 
-        // TODO: check in on this. Its hacky but should work, might be inefficient.
-        let sign = self.sign().multiply(rhs.sign());
-
+        let mut remainder = self;
         let mut quotient = Self::zero();
-        // Want to invert this if num is negative makes logic easier.
-        let mut remainder = if sign == Trit::Neg {
-            self.negate()
-        } else {
-            self
-        };
-        let divisor = if rhs.sign() == Trit::Neg {
-            rhs.negate()
-        } else {
-            rhs
-        };
-        // we need to apply sign later.
+
+        // Use the sign of rhs to correct the quotient later.
+        // Work with a positive divisor to simplify the logic.
+        let divisor_sign = rhs.sign();
+        let divisor = rhs.abs();
 
         for i in (0..N).rev() {
-            // Shift remainder left by 1 trit (multiply by 3)
-            remainder = remainder.shift_left(1);
+            let shifted_divisor = divisor.shift_left(i);
 
-            remainder -= divisor;
-
-            if remainder.sign() == Trit::Neg {
-                remainder += divisor;
-            } else {
+            // Try subtracting the shifted divisor. If this makes the remainder's absolute value
+            // smaller, then the quotient trit is likely 1.
+            let rem_after_sub = remainder - shifted_divisor;
+            if rem_after_sub.abs() <= remainder.abs() {
+                remainder = rem_after_sub;
                 quotient[i] = Trit::Pos;
+                continue; // Move to the next lower trit position
             }
+
+            // Try adding the shifted divisor. If this makes the remainder's absolute value
+            // smaller, then the quotient trit is likely -1.
+            let rem_after_add = remainder + shifted_divisor;
+            if rem_after_add.abs() <= remainder.abs() {
+                remainder = rem_after_add;
+                quotient[i] = Trit::Neg;
+            }
+
+            // If neither operation reduced the remainder's magnitude, the quotient trit is 0.
         }
-        if sign == Trit::Neg {
-            quotient = -quotient;
+
+        // Correct the quotient's sign based on the original divisor's sign
+        if divisor_sign == Trit::Neg {
+            quotient = quotient.negate();
         }
+
         (quotient, remainder)
     }
 }
