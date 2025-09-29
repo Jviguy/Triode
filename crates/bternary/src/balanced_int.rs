@@ -78,7 +78,6 @@ impl<const N: usize> BalancedInt<N> {
         }
         Trit::Zero
     }
-
 }
 
 impl<const N: usize> Default for BalancedInt<N> {
@@ -192,6 +191,56 @@ where
     }
 }
 
+impl<const N: usize> BalancedInt<N> {
+    /// Reads a range of trits and tries to convert them into a requested integer type `T`.
+    /// Returns an error if the value of the trits does not fit into the type `T`.
+    /// TODO: maybe just fix this entirely as it feels very weird.
+    pub fn read_trit_range<T>(&self, start: usize, end: usize) -> Result<T, std::num::TryFromIntError>
+    where
+        T: TryFrom<i64, Error = std::num::TryFromIntError>,
+    {
+        assert!(start <= end, "Start of range cannot be after the end.");
+        assert!(end < N, "End of range is out of bounds for this Word size.");
+
+        let mut value = 0i64;
+        for i in (start..=end).rev() {
+            value *= 3;
+            value += (self[i] as i8) as i64;
+        }
+
+        // Safely try to convert the i64 result into the requested type `T`
+        T::try_from(value)
+    }
+
+    pub fn write_trit_range<T>(&mut self, value: T, start: usize, end: usize) -> Result<(), &'static str>
+    where
+        T: Copy + TryInto<i64>,
+    {
+        // --- Input Validation ---
+        assert!(start <= end, "Start of range cannot be after the end.");
+        assert!(end < N, "End of range is out of bounds for this Word size.");
+
+        let mut num = match value.try_into() {
+            Ok(n) => n,
+            Err(_) => return Err("Input value could not be converted to i64."),
+        };
+
+        // --- Conversion and Writing Loop ---
+        // Iterate from the least significant trit (start) to the most significant (end).
+        for i in start..=end {
+            let remainder = (num + 1) % 3 - 1;
+
+            self[i] = Trit::try_from(remainder as i8).unwrap();
+
+            num = (num - remainder) / 3;
+        }
+
+        if num != 0 {
+            return Err("Value out of range for the given number of trits.");
+        }
+
+        Ok(())
+    }}
 // Arthimetic operations.
 
 impl<const N: usize> BalancedInt<N> where Self: ArithmeticTernaryInteger {
@@ -254,8 +303,15 @@ impl<const N: usize> BalancedInt<N> where Self: ArithmeticTernaryInteger {
         // Work with a positive divisor to simplify the logic.
         let divisor_sign = rhs.sign();
         let divisor = rhs.abs();
-
+        let mut divisor_msb_pos = 0;
         for i in (0..N).rev() {
+            if divisor[i] != Trit::Zero {
+                divisor_msb_pos = i;
+                break;
+            }
+        }
+
+        for i in (0..(N - divisor_msb_pos)).rev() {
             let shifted_divisor = divisor.shift_left(i);
 
             // Try subtracting the shifted divisor. If this makes the remainder's absolute value
@@ -398,40 +454,33 @@ impl<const N: usize> std::ops::RemAssign for BalancedInt<N> where Self: Arithmet
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    type Tryte = BalancedInt<6>;
-
-    impl TernaryIntegerRepr for Tryte {
-        type Int = i16;
-    }
-
-    impl ArithmeticTernaryInteger for Tryte {}
+    use crate::Word;
 
     // Helper to quickly convert an i16 to a Tryte for testing.
-    fn from_i16(val: i16) -> Tryte {
-        Tryte::from_int(val)
+    fn from_i64(val: i64) -> Word {
+        Word::from_int(val)
     }
 
     #[test]
     fn test_zero_conversion() {
-        let zero_int: i16 = 0;
-        let zero_tryte = from_i16(zero_int);
+        let zero_int = 0;
+        let zero_tryte = from_i64(zero_int);
         assert!(zero_tryte.is_zero());
         assert_eq!(zero_tryte.to_int(), zero_int);
     }
 
     #[test]
     fn test_positive_conversions() {
-        let values: &[(i16, &str)] = &[
-            (1, "000001"),
-            (3, "000010"),
-            (10, "000101"),
-            (13, "000111"),
-            (364, "111111"), // Max value for 6 trits
+        let values: &[(i64, &str)] = &[
+            (1, "000000000000000000000001"),
+            (3, "000000000000000000000010"),
+            (10, "000000000000000000000101"),
+            (13, "000000000000000000000111"),
+            (364, "000000000000000000111111"), // Max value for 6 trits
         ];
 
         for &(val, s) in values {
-            let tryte = from_i16(val);
+            let tryte = from_i64(val);
             assert_eq!(tryte.to_string(), s, "Display for {}", val);
             assert_eq!(tryte.to_int(), val, "to_int for {}", val);
         }
@@ -439,16 +488,16 @@ mod tests {
 
     #[test]
     fn test_negative_conversions() {
-        let values: &[(i16, &str)] = &[
-            (-1, "00000T"),
-            (-3, "0000T0"),
-            (-10, "000T0T"),
-            (-13, "000TTT"),
-            (-364, "TTTTTT"), // Min value for 6 trits
+        let values: &[(i64, &str)] = &[
+            (-1, "00000000000000000000000T"),
+            (-3, "0000000000000000000000T0"),
+            (-10, "000000000000000000000T0T"),
+            (-13, "000000000000000000000TTT"),
+            (-364, "000000000000000000TTTTTT"), // Min value for 6 trits
         ];
 
         for &(val, s) in values {
-            let tryte = from_i16(val);
+            let tryte = from_i64(val);
             assert_eq!(tryte.to_string(), s, "Display for {}", val);
             assert_eq!(tryte.to_int(), val, "to_int for {}", val);
         }
@@ -458,109 +507,108 @@ mod tests {
     fn test_round_trip_conversions() {
         // Max value for 6 trits is (3^6 - 1) / 2 = 364
         for i in -364..=364 {
-            let tryte = from_i16(i);
+            let tryte = from_i64(i);
             assert_eq!(tryte.to_int(), i, "Round trip failed for {}", i);
         }
     }
 
     #[test]
     fn test_sign_method() {
-        assert_eq!(from_i16(0).sign(), Trit::Zero);
-        assert_eq!(from_i16(100).sign(), Trit::Pos);
-        assert_eq!(from_i16(-100).sign(), Trit::Neg);
+        assert_eq!(from_i64(0).sign(), Trit::Zero);
+        assert_eq!(from_i64(100).sign(), Trit::Pos);
+        assert_eq!(from_i64(-100).sign(), Trit::Neg);
         // Test a number where the MSD is 0 but it's still positive
-        let thirteen = from_i16(13); // 000111
+        let thirteen = from_i64(13); // 000111
         assert_eq!(thirteen[5], Trit::Zero);
         assert_eq!(thirteen.sign(), Trit::Pos);
     }
 
     #[test]
     fn test_negation() {
-        assert_eq!(from_i16(0).negate(), from_i16(0));
-        assert_eq!((-from_i16(123)).to_int(), -123);
-        assert_eq!((-from_i16(-55)).to_int(), 55);
+        assert_eq!(from_i64(0).negate(), from_i64(0));
+        assert_eq!((-from_i64(123)).to_int(), -123);
+        assert_eq!((-from_i64(-55)).to_int(), 55);
         // Test double negation
-        let val = from_i16(99);
+        let val = from_i64(99);
         assert_eq!(-(-val), val);
     }
 
     #[test]
     fn test_addition() {
-        assert_eq!((from_i16(5) + from_i16(3)).to_int(), 8);
-        assert_eq!((from_i16(-5) + from_i16(3)).to_int(), -2);
-        assert_eq!((from_i16(5) + from_i16(-3)).to_int(), 2);
-        assert_eq!((from_i16(-5) + from_i16(-3)).to_int(), -8);
-        assert_eq!((from_i16(10) + from_i16(0)).to_int(), 10);
+        assert_eq!((from_i64(5) + from_i64(3)).to_int(), 8);
+        assert_eq!((from_i64(-5) + from_i64(3)).to_int(), -2);
+        assert_eq!((from_i64(5) + from_i64(-3)).to_int(), 2);
+        assert_eq!((from_i64(-5) + from_i64(-3)).to_int(), -8);
+        assert_eq!((from_i64(10) + from_i64(0)).to_int(), 10);
         // Test overflow
-        let max = from_i16(364);
-        let one = from_i16(1);
-        assert_eq!((max + one).to_int(), -364); // Wraps around
+        let max = from_i64(141_214_768_240);
+        let one = from_i64(1);
+        assert_eq!((max + one).to_int(), -141_214_768_240); // Wraps around
     }
 
     #[test]
     fn test_subtraction() {
-        assert_eq!((from_i16(5) - from_i16(3)).to_int(), 2);
-        assert_eq!((from_i16(-5) - from_i16(3)).to_int(), -8);
-        assert_eq!((from_i16(5) - from_i16(-3)).to_int(), 8);
-        assert_eq!((from_i16(-5) - from_i16(-3)).to_int(), -2);
-        assert_eq!((from_i16(10) - from_i16(0)).to_int(), 10);
+        assert_eq!((from_i64(5) - from_i64(3)).to_int(), 2);
+        assert_eq!((from_i64(-5) - from_i64(3)).to_int(), -8);
+        assert_eq!((from_i64(5) - from_i64(-3)).to_int(), 8);
+        assert_eq!((from_i64(-5) - from_i64(-3)).to_int(), -2);
+        assert_eq!((from_i64(10) - from_i64(0)).to_int(), 10);
     }
 
     #[test]
     fn test_multiplication() {
-        assert_eq!((from_i16(5) * from_i16(3)).to_int(), 15);
-        assert_eq!((from_i16(-5) * from_i16(3)).to_int(), -15);
-        assert_eq!((from_i16(5) * from_i16(-3)).to_int(), -15);
-        assert_eq!((from_i16(-5) * from_i16(-3)).to_int(), 15);
-        assert_eq!((from_i16(10) * from_i16(0)).to_int(), 0);
-        assert_eq!((from_i16(10) * from_i16(1)).to_int(), 10);
-        assert_eq!((from_i16(10) * from_i16(-1)).to_int(), -10);
+        assert_eq!((from_i64(5) * from_i64(3)).to_int(), 15);
+        assert_eq!((from_i64(-5) * from_i64(3)).to_int(), -15);
+        assert_eq!((from_i64(5) * from_i64(-3)).to_int(), -15);
+        assert_eq!((from_i64(-5) * from_i64(-3)).to_int(), 15);
+        assert_eq!((from_i64(10) * from_i64(0)).to_int(), 0);
+        assert_eq!((from_i64(10) * from_i64(1)).to_int(), 10);
+        assert_eq!((from_i64(10) * from_i64(-1)).to_int(), -10);
     }
 
     #[test]
     fn test_division() {
-        assert_eq!((from_i16(10) / from_i16(3)).to_int(), 3);
-        assert_eq!((from_i16(10) / from_i16(-3)).to_int(), -3);
-        assert_eq!((from_i16(-10) / from_i16(3)).to_int(), -3);
-        assert_eq!((from_i16(-10) / from_i16(-3)).to_int(), 3);
-        assert_eq!((from_i16(0) / from_i16(5)).to_int(), 0);
-        assert_eq!((from_i16(3) / from_i16(10)).to_int(), 0);
-        assert_eq!((from_i16(364) / from_i16(10)).to_int(), 36);
+        assert_eq!((from_i64(10) / from_i64(3)).to_int(), 3);
+        assert_eq!((from_i64(10) / from_i64(-3)).to_int(), -3);
+        assert_eq!((from_i64(-10) / from_i64(3)).to_int(), -3);
+        assert_eq!((from_i64(-10) / from_i64(-3)).to_int(), 3);
+        assert_eq!((from_i64(0) / from_i64(5)).to_int(), 0);
+        assert_eq!((from_i64(3) / from_i64(10)).to_int(), 0);
+        assert_eq!((from_i64(364) / from_i64(10)).to_int(), 36);
     }
 
     #[test]
     #[should_panic(expected = "Division by zero")]
     fn test_division_by_zero_panics() {
-        let _ = from_i16(10) / from_i16(0);
+        let _ = from_i64(10) / from_i64(0);
     }
 
     #[test]
     fn test_remainder() {
         // Balanced ternary remainder is always between -rhs/2 and +rhs/2
-        assert_eq!((from_i16(10) % from_i16(3)).to_int(), 1);
-        assert_eq!((from_i16(10) % from_i16(-3)).to_int(), 1);
-        assert_eq!((from_i16(-10) % from_i16(3)).to_int(), -1);
-        assert_eq!((from_i16(-10) % from_i16(-3)).to_int(), -1);
-        assert_eq!((from_i16(5) % from_i16(3)).to_int(), -1); // 5 = 2*3 - 1
-        assert_eq!((from_i16(0) % from_i16(3)).to_int(), 0);
+        assert_eq!((from_i64(10) % from_i64(3)).to_int(), 1);
+        assert_eq!((from_i64(10) % from_i64(-3)).to_int(), 1);
+        assert_eq!((from_i64(-10) % from_i64(3)).to_int(), -1);
+        assert_eq!((from_i64(-10) % from_i64(-3)).to_int(), -1);
+        assert_eq!((from_i64(5) % from_i64(3)).to_int(), -1); // 5 = 2*3 - 1
+        assert_eq!((from_i64(0) % from_i64(3)).to_int(), 0);
     }
 
     #[test]
     fn test_shift_left() {
         // Shifting left by 1 is multiplication by 3
-        assert_eq!(from_i16(10).shift_left(1).to_int(), 30);
-        assert_eq!(from_i16(-15).shift_left(1).to_int(), -45);
-        assert_eq!(from_i16(50).shift_left(2).to_int(), -279); // 50 * 9. Overflows to -279.
-        assert_eq!(from_i16(100).shift_left(0).to_int(), 100);
+        assert_eq!(from_i64(10).shift_left(1).to_int(), 30);
+        assert_eq!(from_i64(-15).shift_left(1).to_int(), -45);
+        assert_eq!(from_i64(15_690_529_805).shift_left(2).to_int(), -141_214_768_236); // (MAX/9 + 1) * 9        assert_eq!(from_i64(100).shift_left(0).to_int(), 100);
         // Shift all trits out
-        assert!(from_i16(300).shift_left(6).is_zero());
-        assert!(from_i16(300).shift_left(10).is_zero());
+        assert!(from_i64(300).shift_left(24).is_zero());
+        assert!(from_i64(300).shift_left(30).is_zero());
     }
 
     #[test]
     fn test_display_format() {
         // String format should have no spaces or extra chars, just trits
-        assert_eq!(from_i16(13).to_string(), "000111");
-        assert_eq!(from_i16(-13).to_string(), "000TTT");
+        assert_eq!(from_i64(13).to_string(), "000000000000000000000111");
+        assert_eq!(from_i64(-13).to_string(), "000000000000000000000TTT");
     }
 }

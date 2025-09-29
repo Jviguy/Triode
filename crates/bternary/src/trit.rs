@@ -4,7 +4,7 @@ use std::ops::{Mul, Neg};
 /// Balanced Trit, a bternary digit with values -1, 0, and 1.
 /// We use `i8` as the underlying type to represent the three states.
 /// This is useful for speed wise but wastes a good bit of memory.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i8)]
 pub enum Trit {
     Neg = -1,
@@ -90,8 +90,18 @@ impl Display for Trit {
     }
 }
 
-// --- Unit Tests ---
-// The test module ensures our logic is correct for all cases.
+impl PartialOrd for Trit {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Trit {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (*self as i8).cmp(&(*other as i8))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
