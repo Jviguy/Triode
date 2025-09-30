@@ -27,7 +27,9 @@ pub trait InstructionSet {
 
 impl InstructionSet for Word {
     fn opcode(&self) -> Result<OpCode, InvalidOpCode> {
-        OpCode::try_from(self.read_trit_range(0,6))
+        let res = self.read_trit_range(0,6);
+        if let Err(err) = res {
+        }
     }
 
     fn rd(&self) -> Register {

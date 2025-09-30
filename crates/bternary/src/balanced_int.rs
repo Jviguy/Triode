@@ -1,4 +1,7 @@
 use std::cmp::{Ordering, PartialOrd};
+use std::ops::Range;
+use thiserror::Error;
+use crate::balanced_int::BIntError::RangeInvalid;
 use crate::trit::Trit;
 
 pub trait Int:
@@ -15,6 +18,7 @@ Copy
 + std::ops::MulAssign
 + std::ops::DivAssign
 + std::ops::RemAssign
++ TryFrom<i64>
 + Ord
 {
     fn zero() -> Self;
@@ -149,8 +153,8 @@ where
     pub fn to_int(self) -> <Self as TernaryIntegerRepr>::Int {
         let mut acc = <Self as TernaryIntegerRepr>::Int::zero();
         for i in (0..N).rev() {
-            acc = acc * <Self as TernaryIntegerRepr>::Int::three();
-            acc = acc + <Self as TernaryIntegerRepr>::Int::from(self[i] as i8);
+            acc *= <Self as TernaryIntegerRepr>::Int::three();
+            acc += <Self as TernaryIntegerRepr>::Int::from(self[i] as i8);
         }
         acc
     }
@@ -189,30 +193,25 @@ where
         }
         BalancedInt(trits)
     }
-}
 
-impl<const N: usize> BalancedInt<N> {
-    /// Reads a range of trits and tries to convert them into a requested integer type `T`.
-    /// Returns an error if the value of the trits does not fit into the type `T`.
-    /// TODO: maybe just fix this entirely as it feels very weird.
-    pub fn read_trit_range<T>(&self, start: usize, end: usize) -> Result<T, std::num::TryFromIntError>
-    where
-        T: TryFrom<i64, Error = std::num::TryFromIntError>,
+    /// reads a range of trits.
+    /// TODO: Change this to use a slice method that is basically a reference span of start to end makes this better as its still doing TryFrom<i64> which means there is a limit.
+    pub fn read_trit_range(&self, start: usize, end: usize) -> Result<<Self as TernaryIntegerRepr>::Int, BIntError>
     {
-        assert!(start <= end, "Start of range cannot be after the end.");
-        assert!(end < N, "End of range is out of bounds for this Word size.");
-
-        let mut value = 0i64;
-        for i in (start..=end).rev() {
-            value *= 3;
-            value += (self[i] as i8) as i64;
+        if start > end || end >= N {
+            Err(RangeInvalid(start, end))
+        } else {
+            let mut value = 0i64;
+            for i in (start..=end).rev() {
+                value *= 3;
+                value += self[i] as i64;
+            }
+            // Safely try to convert the i64 result into the requested type `T`
+            <Self as TernaryIntegerRepr>::Int::try_from(value).map_err(BIntError::ValueRange)
         }
-
-        // Safely try to convert the i64 result into the requested type `T`
-        T::try_from(value)
     }
 
-    pub fn write_trit_range<T>(&mut self, value: T, start: usize, end: usize) -> Result<(), &'static str>
+    pub fn write_trit_range<T>(&mut self, value: T, start: usize, end: usize) -> Result<<Self as TernaryIntegerRepr>::Int, BIntError>
     where
         T: Copy + TryInto<i64>,
     {
@@ -222,7 +221,7 @@ impl<const N: usize> BalancedInt<N> {
 
         let mut num = match value.try_into() {
             Ok(n) => n,
-            Err(_) => return Err("Input value could not be converted to i64."),
+            Err(_) => return Err(),
         };
 
         // --- Conversion and Writing Loop ---
@@ -241,6 +240,20 @@ impl<const N: usize> BalancedInt<N> {
 
         Ok(())
     }}
+}
+
+#[derive(Error, Debug)]
+pub enum BIntError {
+    #[error("Invalid range {0}->{1}")]
+    RangeInvalid(usize, usize),
+    #[error("Cannot fit value in the trit range into the type requested.")]
+    ValueRange(#[from] std::num::TryFromIntError),
+}
+
+impl<const N: usize> BalancedInt<N> {
+    /// Reads a range of trits and tries to convert them into a requested integer type `T`.
+    /// TODO: maybe just fix this entirely as it feels very weird.
+}
 // Arthimetic operations.
 
 impl<const N: usize> BalancedInt<N> where Self: ArithmeticTernaryInteger {
